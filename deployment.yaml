@@ -1,0 +1,71 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: count-server-deployment
+  labels:
+    app: count-server
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: count-server
+  template:
+    metadata:
+      labels:
+        app: count-server
+    spec:
+      containers:
+      - name: count-server
+        image: sylare/count-server:latest
+        ports:
+        - containerPort: 8080
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "100Mi"
+          limits:
+            cpu: "500m"
+            memory: "500Mi"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: count-server-service
+spec:
+  selector:
+    app: count-server
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8080
+  type: LoadBalancer
+
+---
+
+apiVersion: autoscaling
+kind: HorizontalPodAutoscaler
+metadata:
+  name: count-server-horizontalscaler
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: count-server-deployment
+  minReplicas: 3
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 50
